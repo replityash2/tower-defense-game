@@ -2,47 +2,31 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Tower Defense</title>
-    <style>
-        body {
-            background-color: #1a1a1a; /* Dark theme */
-            color: white;
-            font-family: sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-            overflow: hidden; /* Prevents scrolling */
-        }
-        h1 {
-            font-size: 20px;
-        }
-    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Iron Sector Ops</title>
+    <link rel="stylesheet" href="style.css">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
 
-    <div id="status">
-        <h1>🚀 Loading Game Environment...</h1>
+    <div id="ui-layer">
+        <div>💰 <span id="displayGold">0</span></div>
+        <div id="displayWave">WAVE 1</div>
+        <div>❤️ <span id="displayLives">0</span></div>
     </div>
 
+    <canvas id="gameCanvas"></canvas>
+
+    <div id="controls">
+        <button class="btn">Build Turret (50G)</button>
+    </div>
+
+    <script src="game.js"></script>
     <script>
-        // 1. Initialize Telegram WebApp
+        // Init Telegram App
         const tg = window.Telegram.WebApp;
-
-        // 2. Expand the app to full height
-        tg.expand();
-
-        // 3. Notify that the app is ready
+        tg.expand(); // Full screen
         tg.ready();
-
-        // 4. Change text to confirm it works
-        document.getElementById('status').innerHTML = "<h1>✅ Connection Successful!</h1><p>Running on: " + tg.platform + "</p>";
-        
-        // 5. Match the app header color to our background
-        tg.setHeaderColor('#1a1a1a');
     </script>
 </body>
 </html>
