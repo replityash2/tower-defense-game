@@ -1,9 +1,10 @@
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
-// --- CONFIG ---
-let AdController;
-try { AdController = window.Adsgram.init({ blockId: "21141" }); } catch (e) {}
+// --- 1. CONFIGURATION ---
+// Temporarily disabled Ad Init to prevent crashes during debugging
+let AdController = null; 
+// try { AdController = window.Adsgram.init({ blockId: "21141" }); } catch (e) {}
 
 const BASE_COSTS = { GUNNER: 50, SNIPER: 120, BLASTER: 200 };
 const TOWERS = {
@@ -15,12 +16,12 @@ const TOWERS = {
 const ENEMIES = {
     SOLDIER:  { speed: 0.0018, hp: 50,  color: '#ff3333', reward: 8,  type: 'normal' },
     SCOUT:    { speed: 0.0035, hp: 30,  color: '#FFFF00', reward: 12, type: 'dodge' }, 
-    TANK:     { speed: 0.0007, hp: 450, color: '#8B0000', reward: 40, type: 'armor' }, 
+    TANK:     { speed: 0.0007, hp: 450, color: '#00FFFF', reward: 40, type: 'armor' }, // CYAN TANK
     HEALER:   { speed: 0.0015, hp: 100, color: '#00FF00', reward: 20, type: 'heal' },  
     SPLITTER: { speed: 0.0012, hp: 150, color: '#FF00FF', reward: 25, type: 'split' }  
 };
 
-// --- GAME STATE ---
+// --- 2. GAME STATE ---
 let gameState = {
     gold: 100,
     lives: 10,
@@ -39,7 +40,7 @@ const projectiles = [];
 const particles = [];
 const acidPuddles = [];
 
-// NEW: Global Spawner Variable to prevent "Ghost Waves"
+// Global Spawner to prevent double waves
 let currentSpawner = null;
 
 const path = [
@@ -48,7 +49,7 @@ const path = [
     {x: 0.8, y: 0.5}, {x: 1, y: 0.5}
 ];
 
-// --- CLASSES ---
+// --- 3. CLASSES ---
 class Turret {
     constructor(x, y, typeKey) {
         this.x = x; this.y = y;
@@ -107,6 +108,8 @@ class Turret {
         ctx.beginPath(); ctx.arc(px, py, 15, 0, Math.PI*2); ctx.fill();
         ctx.fillStyle = this.stats.color; ctx.beginPath(); ctx.arc(px, py, 8, 0, Math.PI*2); ctx.fill();
         if(this.level > 1) { ctx.fillStyle = 'white'; ctx.font = '10px Arial'; ctx.fillText("⭐", px-5, py-10); }
+        
+        // Ammo Bar
         ctx.fillStyle = 'black'; ctx.fillRect(px-12, py+15, 24, 4);
         ctx.fillStyle = this.ammo <= 0 ? 'red' : 'cyan';
         ctx.fillRect(px-12, py+15, 24 * (this.ammo/this.stats.maxAmmo), 4);
@@ -114,7 +117,7 @@ class Turret {
     }
 }
 
-// --- LOGIC ---
+// --- 4. LOGIC ---
 function hitEnemy(e, dmg, sourceTower) {
     if (e.type === 'armor' && sourceTower === 'GUNNER') { showText(e.x, e.y, "0", "#888"); return; }
     if (e.type === 'dodge' && sourceTower === 'SNIPER') { if (Math.random() > 0.5) { showText(e.x, e.y, "MISS", "#ff0"); return; } }
@@ -145,26 +148,25 @@ function removeEnemyFromWave() {
     gameState.enemiesLeftInWave--;
     if (gameState.enemiesLeftInWave <= 0 && enemies.filter(en => en.active).length === 0) {
         gameState.waveActive = false;
-        setTimeout(() => { gameState.wave++; startWave(); }, 3000);
+        setTimeout(() => { gameState.wave++; startWave(); }, 2000);
     }
 }
 
 function startWave() {
-    // KILL SWITCH: Clear any running spawner to prevent double waves
     if (currentSpawner) clearInterval(currentSpawner);
     if (gameState.waveActive) return;
-
+    
     gameState.waveActive = true;
     let hpMult = gameState.wave * 15; 
     let waveConfig = [];
 
-    // --- WAVE SETUP (Healer in Wave 2) ---
+    // --- WAVE SETUP ---
     if (gameState.wave === 1) waveConfig = Array(5).fill('SOLDIER');
     else if (gameState.wave === 2) waveConfig = ['SOLDIER', 'HEALER', 'SOLDIER'];
     else if (gameState.wave === 3) waveConfig = Array(15).fill('SCOUT');
     else if (gameState.wave === 4) waveConfig = ['TANK', 'HEALER', 'SOLDIER'];
-    else if (gameState.wave === 5) waveConfig = ['SPLITTER', 'SPLITTER', 'HEALER'];
     else {
+        // Infinite scaling
         for(let i=0; i<gameState.wave * 3; i++) {
             let r = Math.random();
             if(r > 0.9) waveConfig.push('SPLITTER');
@@ -177,20 +179,25 @@ function startWave() {
     gameState.enemiesLeftInWave = waveConfig.length;
     let spawnIndex = 0;
     
-    // ASSIGN TO GLOBAL VARIABLE
+    // START SPAWNING IMMEDIATELY (100ms) to test visibility
     currentSpawner = setInterval(() => {
         if (gameState.gameOver || spawnIndex >= waveConfig.length) { clearInterval(currentSpawner); return; }
-        let type = ENEMIES[waveConfig[spawnIndex]];
-        enemies.push({
-            pathIndex: 0, x: path[0].x, y: path[0].y,
-            hp: type.hp + hpMult, maxHp: type.hp + hpMult,
-            speed: type.speed, color: type.color, reward: type.reward, active: true, type: type.type
-        });
+        
+        let typeKey = waveConfig[spawnIndex];
+        let type = ENEMIES[typeKey];
+        
+        if (type) { // Safety Check
+            enemies.push({
+                pathIndex: 0, x: path[0].x, y: path[0].y,
+                hp: type.hp + hpMult, maxHp: type.hp + hpMult,
+                speed: type.speed, color: type.color, reward: type.reward, active: true, type: type.type
+            });
+        }
         spawnIndex++;
     }, 1000);
 }
 
-// --- UI & INPUT ---
+// --- 5. UI & INPUT ---
 window.selectTower = function(type) {
     gameState.selectedTowerType = type;
     closeUpgradeMenu();
@@ -237,84 +244,99 @@ canvas.addEventListener('click', (e) => {
     }
 });
 
-// --- RENDER & LOOP ---
+// --- 6. RENDER LOOP (THE FIX) ---
 function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
 window.addEventListener('resize', resize); resize();
 
 function draw() {
-    if (gameState.gameOver) return;
-    ctx.clearRect(0,0,canvas.width,canvas.height);
+    // Safety Catch to prevent stopping
+    try {
+        if (gameState.gameOver) return;
+        ctx.clearRect(0,0,canvas.width,canvas.height);
 
-    // DRAW MAP - HIGH CONTRAST COLORS
-    ctx.lineCap = 'round'; ctx.lineWidth = 44; ctx.strokeStyle = '#666'; // Lighter Grey Border
-    ctx.beginPath(); ctx.moveTo(path[0].x*canvas.width, path[0].y*canvas.height);
-    for(let p of path) ctx.lineTo(p.x*canvas.width, p.y*canvas.height);
-    ctx.stroke();
-    
-    ctx.lineWidth = 36; ctx.strokeStyle = '#333'; // Dark Grey Road (Visible against Black)
-    ctx.stroke();
-
-    for(let i=acidPuddles.length-1; i>=0; i--) {
-        let p = acidPuddles[i];
-        ctx.fillStyle = 'rgba(0, 255, 0, 0.4)'; ctx.beginPath(); ctx.arc(p.x*canvas.width, p.y*canvas.height, 25, 0, Math.PI*2); ctx.fill();
-        p.life--; if(p.life<=0) acidPuddles.splice(i,1);
-    }
-
-    towers.forEach(t => { t.update(); t.draw(); });
-
-    for (let i = enemies.length-1; i>=0; i--) {
-        let e = enemies[i];
-        if(e.type === 'heal' && e.active) {
-            ctx.strokeStyle = 'rgba(0, 255, 0, 0.3)'; ctx.lineWidth = 1;
-            ctx.beginPath(); ctx.arc(e.x*canvas.width, e.y*canvas.height, 40, 0, Math.PI*2); ctx.stroke();
-            enemies.forEach(friend => { if(friend !== e && friend.active && Math.hypot(friend.x-e.x, friend.y-e.y)<0.15) friend.hp = Math.min(friend.hp+0.5, friend.maxHp); });
-        }
-        let speed = e.speed;
-        for(let p of acidPuddles) { if(Math.hypot(p.x-e.x, p.y-e.y)<0.1) speed *= 1.5; }
-
-        let target = path[e.pathIndex + 1];
-        if (!target) {
-            e.active = false; gameState.lives--;
-            removeEnemyFromWave(); 
-            if (gameState.lives <= 0) endGame();
-        } else {
-            let dx = target.x - e.x, dy = target.y - e.y;
-            let dist = Math.hypot(dx, dy);
-            if (dist < 0.01) e.pathIndex++; else { e.x += (dx/dist)*speed; e.y += (dy/dist)*speed; }
-        }
-        
-        if(e.active) {
-            let px = e.x*canvas.width, py = e.y*canvas.height;
-            ctx.fillStyle = e.color; ctx.fillRect(px-10, py-10, 20, 20);
-            ctx.fillStyle = 'black'; ctx.font = '10px Arial'; 
-            if(e.type === 'heal') ctx.fillText("✚", px-4, py+4); if(e.type === 'armor') ctx.fillText("🛡️", px-6, py+4);
-            ctx.fillStyle = 'red'; ctx.fillRect(px-10, py-15, 20, 3);
-            ctx.fillStyle = '#0f0'; ctx.fillRect(px-10, py-15, 20*(e.hp/e.maxHp), 3);
-            if(e.type==='armor') { ctx.strokeStyle='silver'; ctx.lineWidth=2; ctx.strokeRect(px-10,py-10,20,20); }
-        } else enemies.splice(i, 1);
-    }
-
-    for(let i=projectiles.length-1; i>=0; i--) {
-        let p = projectiles[i];
-        ctx.strokeStyle = p.color; ctx.lineWidth = 2; 
-        ctx.beginPath(); ctx.moveTo(p.sx*canvas.width, p.sy*canvas.height);
-        ctx.lineTo(p.ex*canvas.width, p.ey*canvas.height);
+        // --- DEBUG COLORS (NEON) ---
+        // If you don't see this, the canvas is broken.
+        ctx.lineCap = 'round'; 
+        ctx.lineWidth = 44; 
+        ctx.strokeStyle = '#FFFFFF'; // WHITE BORDER
+        ctx.beginPath(); ctx.moveTo(path[0].x*canvas.width, path[0].y*canvas.height);
+        for(let p of path) ctx.lineTo(p.x*canvas.width, p.y*canvas.height);
         ctx.stroke();
-        p.life--; if(p.life<=0) projectiles.splice(i,1);
-    }
-    for(let i=particles.length-1; i>=0; i--) {
-        let p = particles[i];
-        if(p.text) { ctx.fillStyle = p.color; ctx.font = "bold 14px Arial"; ctx.fillText(p.text, p.x*canvas.width, p.y*canvas.height); p.y -= 0.001; }
-        else { p.x+=p.vx; p.y+=p.vy; ctx.fillStyle = p.color; ctx.fillRect(p.x*canvas.width, p.y*canvas.height, 4, 4); }
-        p.life--; if(p.life<=0) particles.splice(i,1);
-    }
+        
+        ctx.lineWidth = 36; 
+        ctx.strokeStyle = '#2196F3'; // BRIGHT BLUE ROAD
+        ctx.stroke();
 
-    // UPDATE UI TEXT
-    document.getElementById('displayLives').innerText = gameState.lives;
-    document.getElementById('displayWave').innerText = "WAVE " + gameState.wave;
-    document.getElementById('finalWave').innerText = "WAVE " + gameState.wave;
+        for(let i=acidPuddles.length-1; i>=0; i--) {
+            let p = acidPuddles[i];
+            ctx.fillStyle = 'rgba(0, 255, 0, 0.6)'; ctx.beginPath(); ctx.arc(p.x*canvas.width, p.y*canvas.height, 25, 0, Math.PI*2); ctx.fill();
+            p.life--; if(p.life<=0) acidPuddles.splice(i,1);
+        }
+
+        towers.forEach(t => { t.update(); t.draw(); });
+
+        for (let i = enemies.length-1; i>=0; i--) {
+            let e = enemies[i];
+            
+            // Logic
+            if(e.type === 'heal' && e.active) {
+                ctx.strokeStyle = 'rgba(0, 255, 0, 0.5)'; ctx.lineWidth = 2;
+                ctx.beginPath(); ctx.arc(e.x*canvas.width, e.y*canvas.height, 40, 0, Math.PI*2); ctx.stroke();
+                enemies.forEach(friend => { if(friend !== e && friend.active && Math.hypot(friend.x-e.x, friend.y-e.y)<0.15) friend.hp = Math.min(friend.hp+0.5, friend.maxHp); });
+            }
+            let speed = e.speed;
+            for(let p of acidPuddles) { if(Math.hypot(p.x-e.x, p.y-e.y)<0.1) speed *= 1.5; }
+
+            let target = path[e.pathIndex + 1];
+            if (!target) {
+                e.active = false; gameState.lives--;
+                removeEnemyFromWave(); 
+                if (gameState.lives <= 0) endGame();
+            } else {
+                let dx = target.x - e.x, dy = target.y - e.y;
+                let dist = Math.hypot(dx, dy);
+                if (dist < 0.01) e.pathIndex++; else { e.x += (dx/dist)*speed; e.y += (dy/dist)*speed; }
+            }
+            
+            if(e.active) {
+                let px = e.x*canvas.width, py = e.y*canvas.height;
+                ctx.fillStyle = e.color; ctx.fillRect(px-10, py-10, 20, 20);
+                // Simple Text Icon
+                ctx.fillStyle = 'black'; ctx.font = '10px Arial'; 
+                if(e.type === 'heal') ctx.fillText("✚", px-4, py+4); 
+                if(e.type === 'armor') ctx.fillText("🛡️", px-6, py+4);
+                
+                // HP
+                ctx.fillStyle = 'red'; ctx.fillRect(px-10, py-15, 20, 3);
+                ctx.fillStyle = '#0f0'; ctx.fillRect(px-10, py-15, 20*(e.hp/e.maxHp), 3);
+            } else enemies.splice(i, 1);
+        }
+
+        for(let i=projectiles.length-1; i>=0; i--) {
+            let p = projectiles[i];
+            ctx.strokeStyle = p.color; ctx.lineWidth = 2; 
+            ctx.beginPath(); ctx.moveTo(p.sx*canvas.width, p.sy*canvas.height);
+            ctx.lineTo(p.ex*canvas.width, p.ey*canvas.height);
+            ctx.stroke();
+            p.life--; if(p.life<=0) projectiles.splice(i,1);
+        }
+        for(let i=particles.length-1; i>=0; i--) {
+            let p = particles[i];
+            if(p.text) { ctx.fillStyle = p.color; ctx.font = "bold 14px Arial"; ctx.fillText(p.text, p.x*canvas.width, p.y*canvas.height); p.y -= 0.001; }
+            else { p.x+=p.vx; p.y+=p.vy; ctx.fillStyle = p.color; ctx.fillRect(p.x*canvas.width, p.y*canvas.height, 4, 4); }
+            p.life--; if(p.life<=0) particles.splice(i,1);
+        }
+
+        document.getElementById('displayLives').innerText = gameState.lives;
+        document.getElementById('displayWave').innerText = "WAVE " + gameState.wave;
+        document.getElementById('finalWave').innerText = "WAVE " + gameState.wave;
+    } catch (e) {
+        console.error(e);
+    }
+    
     requestAnimationFrame(draw);
 }
+
 startWave();
 draw();
 updatePrices();
@@ -340,14 +362,14 @@ function openUpgradeMenu(tower, sx, sy) {
 function closeUpgradeMenu() { document.getElementById('upgrade-menu').style.display = 'none'; gameState.selectedTowerRef = null; }
 function endGame() {
     gameState.gameOver = true; 
-    // CLEAR THE SPAWNER SO ENEMIES STOP COMING DURING GAME OVER
     if (currentSpawner) clearInterval(currentSpawner);
     document.getElementById('gameOverModal').classList.remove('hidden');
 }
 
+// SIMULATED REVIVE (Since Ads are Disabled)
 window.watchAdToRevive = function() {
-    if (AdController) AdController.show().then(() => reviveSuccess()).catch(() => { if(confirm("Simulate Success?")) reviveSuccess(); });
-    else alert("SDK Missing");
+    alert("Ads disabled for debugging. Reviving instantly!");
+    reviveSuccess();
 };
 
 function reviveSuccess() {
@@ -355,7 +377,6 @@ function reviveSuccess() {
     gameState.gold+=300; 
     gameState.gameOver=false;
     
-    // FULL RESET OF WAVE LOGIC
     if (currentSpawner) clearInterval(currentSpawner);
     enemies.length = 0; 
     projectiles.length = 0;
