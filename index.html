@@ -7,35 +7,42 @@
     <link rel="stylesheet" href="style.css">
     
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    
     <script src="https://sad.adsgram.ai/js/sad.min.js"></script>
 </head>
 <body>
 
     <div id="ui-layer">
-        <div>💰 <span id="displayGold">120</span></div>
-        <div id="displayWave">WAVE 1</div>
-        <div>❤️ <span id="displayLives">10</span></div>
+        <div style="color:#ffd700">💰 <span id="displayGold">150</span></div>
+        <div style="color:#fff">WAVE <span id="displayWave">1</span></div>
+        <div style="color:#ff4444">❤️ <span id="displayLives">20</span></div>
     </div>
 
     <canvas id="gameCanvas"></canvas>
 
-    <div id="controls">
-        <div class="info-text">Tap map to build Turret (50G)</div>
+    <div id="build-menu">
+        <div class="tower-btn btn-gunner selected" onclick="selectTower('GUNNER')">
+            <span>GUNNER</span>
+            $50
+        </div>
+        <div class="tower-btn btn-sniper" onclick="selectTower('SNIPER')">
+            <span>SNIPER</span>
+            $120
+        </div>
+        <div class="tower-btn btn-blaster" onclick="selectTower('BLASTER')">
+            <span>BLAST</span>
+            $200
+        </div>
     </div>
 
     <div id="gameOverModal" class="modal hidden">
         <div class="modal-content">
-            <h1 style="color: #ff4444;">MISSION FAILED</h1>
-            <p>Sector Overrun at Wave <span id="finalWave">0</span></p>
-            
+            <h1 style="color: #ff4444;">SECTOR LOST</h1>
+            <p>Defeated at Wave <span id="finalWave">0</span></p>
             <button class="btn-green" onclick="watchAdToRevive()">
-                📺 Watch Ad to Revive (+100 Gold)
+                📺 REVIVE (+250 GOLD)
             </button>
-            
-            <br><br>
             <button class="btn-red" onclick="location.reload()">
-                💀 Give Up & Restart
+                💀 RESTART
             </button>
         </div>
     </div>
