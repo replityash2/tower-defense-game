@@ -12,12 +12,19 @@
 <body>
 
     <div id="ui-layer">
-        <div style="color:#ffd700">💰 <span id="displayGold">150</span></div>
+        <div style="color:#ffd700">💰 <span id="displayGold">90</span></div>
         <div style="color:#fff">WAVE <span id="displayWave">1</span></div>
-        <div style="color:#ff4444">❤️ <span id="displayLives">20</span></div>
+        <div style="color:#ff4444">❤️ <span id="displayLives">10</span></div>
     </div>
 
     <canvas id="gameCanvas"></canvas>
+
+    <div id="upgrade-menu">
+        <div id="u-stats" style="font-size:12px; margin-bottom:5px; color:#ddd;">LVL 1</div>
+        <button class="btn-upgrade" id="btn-upgrade">UPGRADE ($50)</button>
+        <button class="btn-sell" id="btn-sell">SELL ($25)</button>
+        <button class="btn-cancel" onclick="closeUpgradeMenu()">CANCEL</button>
+    </div>
 
     <div id="build-menu">
         <div class="tower-btn btn-gunner selected" onclick="selectTower('GUNNER')">
