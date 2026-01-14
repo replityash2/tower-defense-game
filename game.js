@@ -39,6 +39,9 @@ const projectiles = [];
 const particles = [];
 const acidPuddles = [];
 
+// NEW: Global Spawner Variable to prevent "Ghost Waves"
+let currentSpawner = null;
+
 const path = [
     {x: 0, y: 0.5}, {x: 0.2, y: 0.5}, {x: 0.2, y: 0.2},
     {x: 0.5, y: 0.2}, {x: 0.5, y: 0.8}, {x: 0.8, y: 0.8},
@@ -147,7 +150,10 @@ function removeEnemyFromWave() {
 }
 
 function startWave() {
+    // KILL SWITCH: Clear any running spawner to prevent double waves
+    if (currentSpawner) clearInterval(currentSpawner);
     if (gameState.waveActive) return;
+
     gameState.waveActive = true;
     let hpMult = gameState.wave * 15; 
     let waveConfig = [];
@@ -170,8 +176,10 @@ function startWave() {
 
     gameState.enemiesLeftInWave = waveConfig.length;
     let spawnIndex = 0;
-    const spawner = setInterval(() => {
-        if (gameState.gameOver || spawnIndex >= waveConfig.length) { clearInterval(spawner); return; }
+    
+    // ASSIGN TO GLOBAL VARIABLE
+    currentSpawner = setInterval(() => {
+        if (gameState.gameOver || spawnIndex >= waveConfig.length) { clearInterval(currentSpawner); return; }
         let type = ENEMIES[waveConfig[spawnIndex]];
         enemies.push({
             pathIndex: 0, x: path[0].x, y: path[0].y,
@@ -237,12 +245,14 @@ function draw() {
     if (gameState.gameOver) return;
     ctx.clearRect(0,0,canvas.width,canvas.height);
 
-    // DRAW MAP (Road)
-    ctx.lineCap = 'round'; ctx.lineWidth = 44; ctx.strokeStyle = '#555';
+    // DRAW MAP - HIGH CONTRAST COLORS
+    ctx.lineCap = 'round'; ctx.lineWidth = 44; ctx.strokeStyle = '#666'; // Lighter Grey Border
     ctx.beginPath(); ctx.moveTo(path[0].x*canvas.width, path[0].y*canvas.height);
     for(let p of path) ctx.lineTo(p.x*canvas.width, p.y*canvas.height);
     ctx.stroke();
-    ctx.lineWidth = 38; ctx.strokeStyle = '#000'; ctx.stroke();
+    
+    ctx.lineWidth = 36; ctx.strokeStyle = '#333'; // Dark Grey Road (Visible against Black)
+    ctx.stroke();
 
     for(let i=acidPuddles.length-1; i>=0; i--) {
         let p = acidPuddles[i];
@@ -330,36 +340,29 @@ function openUpgradeMenu(tower, sx, sy) {
 function closeUpgradeMenu() { document.getElementById('upgrade-menu').style.display = 'none'; gameState.selectedTowerRef = null; }
 function endGame() {
     gameState.gameOver = true; 
+    // CLEAR THE SPAWNER SO ENEMIES STOP COMING DURING GAME OVER
+    if (currentSpawner) clearInterval(currentSpawner);
     document.getElementById('gameOverModal').classList.remove('hidden');
 }
 
-// FIX: REVIVE LOGIC RESET
 window.watchAdToRevive = function() {
     if (AdController) AdController.show().then(() => reviveSuccess()).catch(() => { if(confirm("Simulate Success?")) reviveSuccess(); });
     else alert("SDK Missing");
 };
+
 function reviveSuccess() {
     gameState.lives=10; 
     gameState.gold+=300; 
     gameState.gameOver=false;
-    // CRITICAL FIX: RESTART WAVE
-    enemies.length = 0; // Clear existing enemies
+    
+    // FULL RESET OF WAVE LOGIC
+    if (currentSpawner) clearInterval(currentSpawner);
+    enemies.length = 0; 
     projectiles.length = 0;
-    gameState.waveActive = false; // Reset flag so startWave runs
+    gameState.waveActive = false; 
+    gameState.enemiesLeftInWave = 0;
+    
     document.getElementById('gameOverModal').classList.add('hidden');
-    startWave(); // Restart wave logic
-    draw(); // Restart visual loop
-}
-ectedTowerRef = null; }
-function endGame() {
-    gameState.gameOver = true; document.getElementById('finalWave').innerText = gameState.wave;
-    document.getElementById('gameOverModal').classList.remove('hidden');
-}
-window.watchAdToRevive = function() {
-    if (AdController) AdController.show().then(() => reviveSuccess()).catch(() => { if(confirm("Simulate Success?")) reviveSuccess(); });
-    else alert("SDK Missing");
-};
-function reviveSuccess() {
-    gameState.lives=10; gameState.gold+=300; gameState.gameOver=false;
-    document.getElementById('gameOverModal').classList.add('hidden'); draw();
+    startWave(); 
+    draw(); 
 }
