@@ -12,7 +12,7 @@
 <body>
 
     <div id="ui-layer">
-        <div style="color:#ffd700">💰 <span id="displayGold">90</span></div>
+        <div style="color:#ffd700">💰 <span id="displayGold">100</span></div>
         <div style="color:#fff">WAVE <span id="displayWave">1</span></div>
         <div style="color:#ff4444">❤️ <span id="displayLives">10</span></div>
     </div>
@@ -21,23 +21,25 @@
 
     <div id="upgrade-menu">
         <div id="u-stats" style="font-size:12px; margin-bottom:5px; color:#ddd;">LVL 1</div>
-        <button class="btn-upgrade" id="btn-upgrade">UPGRADE ($50)</button>
-        <button class="btn-sell" id="btn-sell">SELL ($25)</button>
+        <button class="btn-upgrade" id="btn-upgrade">UPGRADE</button>
+        <button class="btn-sell" id="btn-sell">SELL</button>
         <button class="btn-cancel" onclick="closeUpgradeMenu()">CANCEL</button>
     </div>
 
     <div id="build-menu">
         <div class="tower-btn btn-gunner selected" onclick="selectTower('GUNNER')">
             <span>GUNNER</span>
-            $50
+            <div id="cost-gunner" class="cost-text">$50</div>
         </div>
+        
         <div class="tower-btn btn-sniper" onclick="selectTower('SNIPER')">
             <span>SNIPER</span>
-            $120
+            <div id="cost-sniper" class="cost-text">$120</div>
         </div>
+        
         <div class="tower-btn btn-blaster" onclick="selectTower('BLASTER')">
             <span>BLAST</span>
-            $200
+            <div id="cost-blaster" class="cost-text">$200</div>
         </div>
     </div>
 
@@ -46,7 +48,7 @@
             <h1 style="color: #ff4444;">SECTOR LOST</h1>
             <p>Defeated at Wave <span id="finalWave">0</span></p>
             <button class="btn-green" onclick="watchAdToRevive()">
-                📺 REVIVE (+250 GOLD)
+                📺 REVIVE (+300 GOLD)
             </button>
             <button class="btn-red" onclick="location.reload()">
                 💀 RESTART
@@ -55,6 +57,7 @@
     </div>
 
     <script src="game.js"></script>
+    
     <script>
         const tg = window.Telegram.WebApp;
         tg.expand();
