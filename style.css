@@ -1,106 +1,109 @@
 body {
     margin: 0;
     overflow: hidden;
-    background-color: #202020; /* Dark Armor Gray */
-    font-family: 'Courier New', Courier, monospace; /* Terminal style */
-    user-select: none; /* Prevent text selection on tap */
+    background-color: #1a1a1a;
+    font-family: 'Courier New', Courier, monospace;
+    user-select: none;
     -webkit-user-select: none;
     color: white;
 }
 
-/* The Top HUD */
+/* TOP HUD */
 #ui-layer {
     position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 60px;
+    top: 0; left: 0;
+    width: 100%; height: 50px;
     background: rgba(0, 0, 0, 0.9);
-    border-bottom: 2px solid #4CAF50; /* Radar Green */
+    border-bottom: 2px solid #4CAF50;
     display: flex;
     justify-content: space-around;
     align-items: center;
-    color: #4CAF50;
     font-weight: bold;
-    font-size: 18px;
+    font-size: 16px;
     z-index: 10;
 }
 
-/* The Game Board */
+/* GAME CANVAS */
 canvas {
     display: block;
-    background-color: #333;
+    background-color: #222;
 }
 
-/* Bottom Controls */
-#controls {
+/* BUILD MENU (New!) */
+#build-menu {
     position: absolute;
-    bottom: 20px;
-    width: 100%;
-    text-align: center;
-    pointer-events: none; /* Let clicks pass through to map */
-    z-index: 10;
-}
-
-.info-text {
-    display: inline-block;
-    color: #aaa;
-    font-size: 14px;
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 10px;
+    z-index: 20;
     background: rgba(0,0,0,0.8);
-    padding: 8px 15px;
-    border-radius: 20px;
-    border: 1px solid #555;
+    padding: 10px;
+    border-radius: 15px;
+    border: 1px solid #444;
 }
 
-/* POPUP MODAL STYLES */
+.tower-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: #333;
+    border: 2px solid #555;
+    color: white;
+    padding: 8px;
+    border-radius: 8px;
+    width: 70px;
+    cursor: pointer;
+    font-size: 10px;
+    transition: all 0.2s;
+}
+
+.tower-btn span {
+    font-size: 12px;
+    font-weight: bold;
+    margin-bottom: 4px;
+}
+
+/* Highlight the selected tower */
+.tower-btn.selected {
+    border-color: #ffd700;
+    background: #444;
+    transform: scale(1.1);
+}
+
+/* Color coding for buttons */
+.btn-gunner { color: #4CAF50; }
+.btn-sniper { color: #2196F3; }
+.btn-blaster { color: #FF9800; }
+
+/* MODAL STYLES */
 .modal {
     position: fixed;
     top: 0; left: 0;
     width: 100%; height: 100%;
-    background: rgba(0, 0, 0, 0.85); /* Dark overlay */
+    background: rgba(0, 0, 0, 0.9);
     display: flex;
     justify-content: center;
     align-items: center;
     z-index: 100;
 }
-
-.hidden {
-    display: none;
-}
-
+.hidden { display: none; }
 .modal-content {
     background: #222;
-    border: 2px solid #ff4444; /* Red Border for Alert */
-    padding: 25px;
+    border: 2px solid #ff4444;
+    padding: 20px;
     text-align: center;
     border-radius: 10px;
-    color: white;
-    width: 85%;
-    max-width: 320px;
-    box-shadow: 0 0 20px rgba(255, 0, 0, 0.2);
+    width: 80%;
+    max-width: 300px;
 }
-
 .btn-green {
-    background: #4CAF50;
-    color: white;
-    border: none;
-    padding: 15px;
-    width: 100%;
-    font-size: 16px;
-    font-weight: bold;
-    border-radius: 5px;
-    cursor: pointer;
-    margin-bottom: 10px;
-    text-transform: uppercase;
+    background: #4CAF50; color: white; border: none;
+    padding: 12px; width: 100%; font-weight: bold;
+    border-radius: 5px; margin-bottom: 10px;
 }
-
 .btn-red {
-    background: transparent;
-    border: 1px solid #ff4444;
-    color: #ff4444;
-    padding: 10px;
-    width: 100%;
-    border-radius: 5px;
-    cursor: pointer;
-    font-size: 14px;
+    background: transparent; border: 1px solid #ff4444;
+    color: #ff4444; padding: 10px; width: 100%; border-radius: 5px;
 }
