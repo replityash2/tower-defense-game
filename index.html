@@ -13,7 +13,7 @@
 
     <div id="ui-layer">
         <div style="color:#ffd700">💰 <span id="displayGold">100</span></div>
-        <div style="color:#fff">WAVE <span id="displayWave">1</span></div>
+        <div style="color:#fff"><span id="displayWave">WAVE 1</span></div>
         <div style="color:#ff4444">❤️ <span id="displayLives">10</span></div>
     </div>
 
@@ -31,12 +31,10 @@
             <span>GUNNER</span>
             <div id="cost-gunner" class="cost-text">$50</div>
         </div>
-        
         <div class="tower-btn btn-sniper" onclick="selectTower('SNIPER')">
             <span>SNIPER</span>
             <div id="cost-sniper" class="cost-text">$120</div>
         </div>
-        
         <div class="tower-btn btn-blaster" onclick="selectTower('BLASTER')">
             <span>BLAST</span>
             <div id="cost-blaster" class="cost-text">$200</div>
@@ -46,7 +44,7 @@
     <div id="gameOverModal" class="modal hidden">
         <div class="modal-content">
             <h1 style="color: #ff4444;">SECTOR LOST</h1>
-            <p>Defeated at Wave <span id="finalWave">0</span></p>
+            <p>Defeated at <span id="finalWave">WAVE 1</span></p>
             <button class="btn-green" onclick="watchAdToRevive()">
                 📺 REVIVE (+300 GOLD)
             </button>
@@ -57,7 +55,6 @@
     </div>
 
     <script src="game.js"></script>
-    
     <script>
         const tg = window.Telegram.WebApp;
         tg.expand();
