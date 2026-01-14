@@ -3,17 +3,19 @@ body {
     overflow: hidden;
     background-color: #202020; /* Dark Armor Gray */
     font-family: 'Courier New', Courier, monospace; /* Terminal style */
-    user-select: none; /* Prevent text selection */
+    user-select: none; /* Prevent text selection on tap */
+    -webkit-user-select: none;
+    color: white;
 }
 
-/* The Top HUD (Heads Up Display) */
+/* The Top HUD */
 #ui-layer {
     position: absolute;
     top: 0;
     left: 0;
     width: 100%;
     height: 60px;
-    background: rgba(0, 0, 0, 0.8);
+    background: rgba(0, 0, 0, 0.9);
     border-bottom: 2px solid #4CAF50; /* Radar Green */
     display: flex;
     justify-content: space-around;
@@ -30,28 +32,75 @@ canvas {
     background-color: #333;
 }
 
-/* Control Buttons (Bottom) */
+/* Bottom Controls */
 #controls {
     position: absolute;
     bottom: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    display: flex;
-    gap: 15px;
+    width: 100%;
+    text-align: center;
+    pointer-events: none; /* Let clicks pass through to map */
     z-index: 10;
 }
 
-.btn {
-    background: #444;
-    border: 1px solid #4CAF50;
-    color: white;
-    padding: 12px 24px;
-    border-radius: 4px;
-    font-size: 16px;
-    cursor: pointer;
+.info-text {
+    display: inline-block;
+    color: #aaa;
+    font-size: 14px;
+    background: rgba(0,0,0,0.8);
+    padding: 8px 15px;
+    border-radius: 20px;
+    border: 1px solid #555;
 }
 
-.btn:active {
+/* POPUP MODAL STYLES */
+.modal {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: rgba(0, 0, 0, 0.85); /* Dark overlay */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 100;
+}
+
+.hidden {
+    display: none;
+}
+
+.modal-content {
+    background: #222;
+    border: 2px solid #ff4444; /* Red Border for Alert */
+    padding: 25px;
+    text-align: center;
+    border-radius: 10px;
+    color: white;
+    width: 85%;
+    max-width: 320px;
+    box-shadow: 0 0 20px rgba(255, 0, 0, 0.2);
+}
+
+.btn-green {
     background: #4CAF50;
-    color: black;
+    color: white;
+    border: none;
+    padding: 15px;
+    width: 100%;
+    font-size: 16px;
+    font-weight: bold;
+    border-radius: 5px;
+    cursor: pointer;
+    margin-bottom: 10px;
+    text-transform: uppercase;
+}
+
+.btn-red {
+    background: transparent;
+    border: 1px solid #ff4444;
+    color: #ff4444;
+    padding: 10px;
+    width: 100%;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
 }
