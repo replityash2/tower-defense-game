@@ -1,278 +1,300 @@
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
-// --- 1. ADSGRAM SETUP ---
-// We use your Block ID: 21141
-// defined in the documentation you found
+// --- 1. CONFIGURATION ---
 let AdController;
 try {
     AdController = window.Adsgram.init({ blockId: "21141" });
-} catch (e) {
-    console.error("Ad SDK Init failed:", e);
-}
+} catch (e) { console.log("AdBlock active or network error"); }
 
-// --- 2. SETUP & RESIZE ---
-function resize() {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-}
-window.addEventListener('resize', resize);
-resize();
+// TOWER TYPES
+const TOWERS = {
+    GUNNER:  { cost: 50,  range: 0.25, damage: 25, rate: 30, color: '#4CAF50', type: 'single' },
+    SNIPER:  { cost: 120, range: 0.50, damage: 100, rate: 90, color: '#2196F3', type: 'single' },
+    BLASTER: { cost: 200, range: 0.20, damage: 40, rate: 50, color: '#FF9800', type: 'splash' }
+};
 
-// --- 3. GAME VARIABLES ---
+// ENEMY TYPES
+const ENEMIES = {
+    SOLDIER: { speed: 0.0015, hp: 60,  color: '#ff3333', reward: 10 },
+    SCOUT:   { speed: 0.0030, hp: 30,  color: '#FFFF00', reward: 15 }, // Fast, Weak
+    TANK:    { speed: 0.0008, hp: 300, color: '#8B0000', reward: 50 }  // Slow, Strong
+};
+
+// --- 2. GAME STATE ---
 let gameState = {
-    gold: 120,    
-    lives: 10,
+    gold: 150,
+    lives: 20,
     wave: 1,
-    gameOver: false
+    gameOver: false,
+    selectedTower: 'GUNNER', // Default selection
+    enemiesLeftInWave: 0,
+    waveActive: false
 };
 
 const enemies = [];
 const towers = [];
-const projectiles = []; 
+const projectiles = [];
+const particles = []; // Sparks/Explosions
 
-// Game Balance
-const ENEMY_SPEED = 0.0015;
-const TURRET_COST = 50;
-const TURRET_RANGE = 0.25; 
-const REWARD_GOLD = 10;   
-
-// The Map Path
+// --- 3. MAP PATH ---
 const path = [
-    {x: 0, y: 0.5},
-    {x: 0.4, y: 0.5},
-    {x: 0.4, y: 0.2},
-    {x: 0.8, y: 0.2},
-    {x: 0.8, y: 0.8},
-    {x: 1, y: 0.8}
+    {x: 0, y: 0.5}, {x: 0.2, y: 0.5}, {x: 0.2, y: 0.2},
+    {x: 0.5, y: 0.2}, {x: 0.5, y: 0.8}, {x: 0.8, y: 0.8},
+    {x: 0.8, y: 0.5}, {x: 1, y: 0.5}
 ];
 
-// --- 4. CLASSES ---
-
-class Enemy {
-    constructor() {
-        this.pathIndex = 0;
-        this.x = path[0].x;
-        this.y = path[0].y;
-        this.health = 100 + (gameState.wave * 15); 
-        this.maxHealth = this.health;
-        this.active = true;
+// --- 4. WAVE SYSTEM (SCRIPTED LEVELS) ---
+function startWave() {
+    if (gameState.waveActive) return;
+    gameState.waveActive = true;
+    
+    let waveConfig = [];
+    
+    // Define Difficulty
+    if (gameState.wave === 1) waveConfig = Array(5).fill('SOLDIER');
+    else if (gameState.wave === 2) waveConfig = Array(10).fill('SOLDIER');
+    else if (gameState.wave === 3) waveConfig = Array(15).fill('SCOUT'); // Rush!
+    else if (gameState.wave === 4) waveConfig = ['TANK', 'SOLDIER', 'TANK', 'SOLDIER'];
+    else if (gameState.wave % 5 === 0) waveConfig = Array(gameState.wave).fill('TANK'); // Boss level
+    else {
+        // Random mix for higher levels
+        for(let i=0; i<gameState.wave * 3; i++) {
+            waveConfig.push(Math.random() > 0.8 ? 'TANK' : (Math.random() > 0.5 ? 'SCOUT' : 'SOLDIER'));
+        }
     }
 
-    update() {
-        if (!this.active) return;
+    gameState.enemiesLeftInWave = waveConfig.length;
+    let spawnIndex = 0;
 
-        let target = path[this.pathIndex + 1];
-        if (!target) {
-            this.active = false;
-            gameState.lives--;
+    const spawner = setInterval(() => {
+        if (gameState.gameOver || spawnIndex >= waveConfig.length) {
+            clearInterval(spawner);
             return;
         }
-
-        let dx = target.x - this.x;
-        let dy = target.y - this.y;
-        let dist = Math.sqrt(dx*dx + dy*dy);
-
-        if (dist < 0.01) {
-            this.pathIndex++;
-        } else {
-            this.x += (dx / dist) * ENEMY_SPEED;
-            this.y += (dy / dist) * ENEMY_SPEED;
-        }
-    }
-
-    draw() {
-        if (!this.active) return;
-        let px = this.x * canvas.width;
-        let py = this.y * canvas.height;
-
-        // Enemy Body
-        ctx.fillStyle = '#ff3333';
-        ctx.fillRect(px - 12, py - 12, 24, 24);
-
-        // Health Bar
-        ctx.fillStyle = 'red';
-        ctx.fillRect(px - 12, py - 20, 24, 4);
-        ctx.fillStyle = '#00ff00';
-        ctx.fillRect(px - 12, py - 20, 24 * (this.health / this.maxHealth), 4);
-    }
+        spawnEnemy(waveConfig[spawnIndex]);
+        spawnIndex++;
+    }, 1000); // Spawn 1 enemy every second
 }
 
-class Turret {
-    constructor(x, y) {
-        this.x = x; 
-        this.y = y;
-        this.cooldown = 0;
-        this.range = TURRET_RANGE;
-    }
+function spawnEnemy(typeKey) {
+    let type = ENEMIES[typeKey];
+    enemies.push({
+        pathIndex: 0,
+        x: path[0].x, y: path[0].y,
+        hp: type.hp + (gameState.wave * 5), // Slight scaling
+        maxHp: type.hp + (gameState.wave * 5),
+        speed: type.speed,
+        color: type.color,
+        reward: type.reward,
+        active: true
+    });
+}
 
+// --- 5. GAME OBJECTS ---
+class Turret {
+    constructor(x, y, typeKey) {
+        this.x = x; this.y = y;
+        this.type = TOWERS[typeKey];
+        this.cooldown = 0;
+    }
     update() {
         if (this.cooldown > 0) this.cooldown--;
-
         if (this.cooldown <= 0) {
             for (let e of enemies) {
-                if (!e.active) continue;
-                
-                let dx = e.x - this.x;
-                let dy = e.y - this.y;
-                let dist = Math.sqrt(dx*dx + dy*dy);
-
-                if (dist < this.range) {
+                let dist = Math.hypot(e.x - this.x, e.y - this.y);
+                if (dist < this.type.range) {
                     this.shoot(e);
                     break; 
                 }
             }
         }
     }
-
-    shoot(enemy) {
-        this.cooldown = 35; 
-        enemy.health -= 40; 
+    shoot(target) {
+        this.cooldown = this.type.rate;
+        // Visual Laser
+        projectiles.push({sx: this.x, sy: this.y, ex: target.x, ey: target.y, life: 10, color: this.type.color});
         
-        projectiles.push({
-            sx: this.x, sy: this.y,
-            ex: enemy.x, ey: enemy.y,
-            life: 8 
-        });
-
-        if (enemy.health <= 0) {
-            enemy.active = false;
-            gameState.gold += REWARD_GOLD;
+        // Damage Logic
+        if (this.type.type === 'splash') {
+            // Blaster hits everyone near target
+            enemies.forEach(e => {
+                if (Math.hypot(e.x - target.x, e.y - target.y) < 0.1) {
+                    hitEnemy(e, this.type.damage);
+                }
+            });
+            createExplosion(target.x, target.y, '#FF9800');
+        } else {
+            // Standard Hit
+            hitEnemy(target, this.type.damage);
         }
     }
-
     draw() {
-        let px = this.x * canvas.width;
-        let py = this.y * canvas.height;
-
+        let px = this.x * canvas.width, py = this.y * canvas.height;
         // Base
-        ctx.fillStyle = '#444';
-        ctx.beginPath();
-        ctx.arc(px, py, 15, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Top (Green)
-        ctx.fillStyle = '#4CAF50';
-        ctx.beginPath();
-        ctx.arc(px, py, 8, 0, Math.PI * 2);
-        ctx.fill();
-        
-        // Range
-        ctx.strokeStyle = 'rgba(76, 175, 80, 0.1)';
-        ctx.beginPath();
-        ctx.arc(px, py, this.range * canvas.width, 0, Math.PI*2);
-        ctx.stroke();
+        ctx.fillStyle = '#444'; ctx.beginPath(); ctx.arc(px, py, 15, 0, Math.PI*2); ctx.fill();
+        // Turret Color
+        ctx.fillStyle = this.type.color; ctx.beginPath(); ctx.arc(px, py, 8, 0, Math.PI*2); ctx.fill();
     }
 }
 
-// --- 5. INPUT ---
+function hitEnemy(e, dmg) {
+    e.hp -= dmg;
+    if (e.hp <= 0 && e.active) {
+        e.active = false;
+        gameState.gold += e.reward;
+        gameState.enemiesLeftInWave--;
+        createExplosion(e.x, e.y, e.color);
+        
+        // Check Wave End
+        if (gameState.enemiesLeftInWave <= 0 && enemies.filter(en => en.active).length === 0) {
+            gameState.waveActive = false;
+            setTimeout(() => {
+                gameState.wave++;
+                startWave();
+            }, 3000); // 3 sec break between waves
+        }
+    }
+}
+
+function createExplosion(x, y, color) {
+    for(let i=0; i<5; i++) {
+        particles.push({
+            x: x, y: y,
+            vx: (Math.random()-0.5)*0.01, vy: (Math.random()-0.5)*0.01,
+            life: 20, color: color
+        });
+    }
+}
+
+// --- 6. INPUT HANDLING ---
+// UI Selection
+window.selectTower = function(type) {
+    gameState.selectedTower = type;
+    // Update visual buttons
+    document.querySelectorAll('.tower-btn').forEach(b => b.classList.remove('selected'));
+    document.querySelector('.btn-' + type.toLowerCase()).classList.add('selected');
+};
+
+// Map Clicking
 canvas.addEventListener('click', (e) => {
     if (gameState.gameOver) return;
-
     let rect = canvas.getBoundingClientRect();
     let cx = (e.clientX - rect.left) / canvas.width;
     let cy = (e.clientY - rect.top) / canvas.height;
-
-    if (gameState.gold >= TURRET_COST) {
-        towers.push(new Turret(cx, cy));
-        gameState.gold -= TURRET_COST;
+    
+    // Check cost
+    let towerData = TOWERS[gameState.selectedTower];
+    if (gameState.gold >= towerData.cost) {
+        towers.push(new Turret(cx, cy, gameState.selectedTower));
+        gameState.gold -= towerData.cost;
     } else {
         document.getElementById('displayGold').style.color = 'red';
-        setTimeout(() => document.getElementById('displayGold').style.color = '#4CAF50', 200);
+        setTimeout(()=> document.getElementById('displayGold').style.color = '#ffd700', 300);
     }
 });
 
-// --- 6. AD REVENUE LOGIC ---
-// Implements the .then() and .catch() structure from the docs
-function watchAdToRevive() {
-    if (AdController) {
-        AdController.show().then((result) => {
-            // User watched ad till the end
-            // Reward the user
-            gameState.lives = 5;       
-            gameState.gold += 150;     
-            gameState.gameOver = false; 
-            
-            document.getElementById('gameOverModal').classList.add('hidden');
-            drawGame();
-        }).catch((result) => {
-            // User closed ad early or error occurred
-            console.log(result); // optional debugging
-            // Do not reward
-            alert("You must watch the ad to revive!"); 
-        });
-    } else {
-        alert("Ads are not loading. Check your internet connection.");
-    }
-}
+// --- 7. MAIN LOOP & RESIZE ---
+function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+window.addEventListener('resize', resize); resize();
 
-// --- 7. MAIN LOOP ---
-function drawGame() {
+function draw() {
     if (gameState.gameOver) return;
-
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.clearRect(0,0,canvas.width,canvas.height);
 
     // Draw Map
-    ctx.beginPath();
-    ctx.lineWidth = 40;
-    ctx.strokeStyle = '#111';
-    ctx.lineCap = 'round';
-    ctx.moveTo(path[0].x * canvas.width, path[0].y * canvas.height);
-    for (let p of path) ctx.lineTo(p.x * canvas.width, p.y * canvas.height);
+    ctx.lineWidth = 40; ctx.lineCap = 'round'; ctx.strokeStyle = '#222';
+    ctx.beginPath(); ctx.moveTo(path[0].x*canvas.width, path[0].y*canvas.height);
+    for(let p of path) ctx.lineTo(p.x*canvas.width, p.y*canvas.height);
     ctx.stroke();
+    // Path Border
+    ctx.lineWidth = 2; ctx.strokeStyle = '#444'; ctx.stroke();
 
-    // Draw Border
-    ctx.lineWidth = 2;
-    ctx.strokeStyle = '#333';
-    ctx.stroke();
-
-    // Draw Objects
+    // Draw Towers
     towers.forEach(t => { t.update(); t.draw(); });
 
-    for (let i = enemies.length - 1; i >= 0; i--) {
+    // Draw Enemies
+    for (let i = enemies.length-1; i>=0; i--) {
         let e = enemies[i];
-        e.update();
-        e.draw();
-        if (!e.active) enemies.splice(i, 1);
+        // Move Logic
+        let target = path[e.pathIndex + 1];
+        if (!target) {
+            e.active = false; gameState.lives--;
+            if (gameState.lives <= 0) endGame();
+        } else {
+            let dx = target.x - e.x, dy = target.y - e.y;
+            let dist = Math.hypot(dx, dy);
+            if (dist < 0.01) e.pathIndex++;
+            else { e.x += (dx/dist)*e.speed; e.y += (dy/dist)*e.speed; }
+        }
+        
+        // Draw Enemy
+        if(e.active) {
+            let px = e.x*canvas.width, py = e.y*canvas.height;
+            ctx.fillStyle = e.color; ctx.fillRect(px-10, py-10, 20, 20);
+            // HP Bar
+            ctx.fillStyle = 'red'; ctx.fillRect(px-10, py-15, 20, 3);
+            ctx.fillStyle = '#0f0'; ctx.fillRect(px-10, py-15, 20*(e.hp/e.maxHp), 3);
+        } else enemies.splice(i, 1);
+    }
+
+    // Draw Particles
+    for(let i=particles.length-1; i>=0; i--) {
+        let p = particles[i];
+        p.x += p.vx; p.y += p.vy; p.life--;
+        ctx.fillStyle = p.color; ctx.fillRect(p.x*canvas.width, p.y*canvas.height, 4, 4);
+        if(p.life <= 0) particles.splice(i,1);
     }
 
     // Draw Lasers
-    ctx.lineWidth = 3;
-    ctx.strokeStyle = '#ffff00'; 
-    for (let i = projectiles.length - 1; i >= 0; i--) {
+    for(let i=projectiles.length-1; i>=0; i--) {
         let p = projectiles[i];
-        ctx.beginPath();
-        ctx.moveTo(p.sx * canvas.width, p.sy * canvas.height);
-        ctx.lineTo(p.ex * canvas.width, p.ey * canvas.height);
+        ctx.strokeStyle = p.color; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(p.sx*canvas.width, p.sy*canvas.height);
+        ctx.lineTo(p.ex*canvas.width, p.ey*canvas.height);
         ctx.stroke();
-        p.life--;
-        if (p.life <= 0) projectiles.splice(i, 1);
+        p.life--; if(p.life<=0) projectiles.splice(i,1);
     }
 
-    // Update UI
+    // UI Updates
     document.getElementById('displayGold').innerText = Math.floor(gameState.gold);
     document.getElementById('displayLives').innerText = gameState.lives;
-    document.getElementById('displayWave').innerText = "WAVE " + gameState.wave;
+    document.getElementById('displayWave').innerText = gameState.wave;
 
-    // Check Loss
-    if (gameState.lives <= 0) {
-        gameState.gameOver = true;
-        document.getElementById('finalWave').innerText = gameState.wave;
-        document.getElementById('gameOverModal').classList.remove('hidden');
-    } else {
-        requestAnimationFrame(drawGame);
-    }
+    requestAnimationFrame(draw);
 }
 
-// Start
-drawGame();
+// Start Game
+startWave();
+draw();
 
-// Spawner
-setInterval(() => {
-    if (!gameState.gameOver) enemies.push(new Enemy());
-}, 1500);
+// --- 8. GAME OVER & ADS (DEV MODE) ---
+function endGame() {
+    gameState.gameOver = true;
+    document.getElementById('finalWave').innerText = gameState.wave;
+    document.getElementById('gameOverModal').classList.remove('hidden');
+}
 
-// Difficulty
-setInterval(() => {
-    if (!gameState.gameOver) gameState.wave++;
-}, 12000);
+window.watchAdToRevive = function() {
+    // Attempt Real Ad
+    if (AdController) {
+        AdController.show().then(() => {
+            reviveSuccess();
+        }).catch((e) => {
+            // DEV MODE BYPASS FOR MODERATION
+            if (confirm("🚧 DEV MODE: Ad failed (Moderation?).\nSimulate success?")) {
+                reviveSuccess();
+            }
+        });
+    } else {
+        alert("Ad SDK missing.");
+    }
+};
+
+function reviveSuccess() {
+    gameState.lives = 10;
+    gameState.gold += 250; // Bigger reward
+    gameState.gameOver = false;
+    document.getElementById('gameOverModal').classList.add('hidden');
+    draw();
+}
