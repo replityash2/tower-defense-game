@@ -1,26 +1,14 @@
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
-// --- 1. ADSGRAM SETUP (FAIL-SAFE MODE) ---
-// We try to connect to AdsGram. If it fails (AdBlocker/Network error), we use a dummy mode.
+// --- 1. ADSGRAM SETUP ---
+// We use your Block ID: 21141
+// defined in the documentation you found
 let AdController;
 try {
-    if (window.Adsgram) {
-        AdController = window.Adsgram.init({ blockId: "21141" });
-    } else {
-        throw new Error("Adsgram SDK not loaded");
-    }
+    AdController = window.Adsgram.init({ blockId: "21141" });
 } catch (e) {
-    console.log("Ads failed to load (AdBlock?):", e);
-    // Dummy Controller so game doesn't crash
-    AdController = {
-        show: () => {
-            return new Promise((resolve, reject) => {
-                alert("Ads are blocked on this device/network.\n\nSimulating reward...");
-                resolve();
-            });
-        }
-    };
+    console.error("Ad SDK Init failed:", e);
 }
 
 // --- 2. SETUP & RESIZE ---
@@ -98,7 +86,7 @@ class Enemy {
         let px = this.x * canvas.width;
         let py = this.y * canvas.height;
 
-        // Enemy Body (Red Tank)
+        // Enemy Body
         ctx.fillStyle = '#ff3333';
         ctx.fillRect(px - 12, py - 12, 24, 24);
 
@@ -138,10 +126,9 @@ class Turret {
     }
 
     shoot(enemy) {
-        this.cooldown = 35; // Fire speed
-        enemy.health -= 40; // Damage
+        this.cooldown = 35; 
+        enemy.health -= 40; 
         
-        // Laser effect
         projectiles.push({
             sx: this.x, sy: this.y,
             ex: enemy.x, ey: enemy.y,
@@ -170,7 +157,7 @@ class Turret {
         ctx.arc(px, py, 8, 0, Math.PI * 2);
         ctx.fill();
         
-        // Range (Subtle)
+        // Range
         ctx.strokeStyle = 'rgba(76, 175, 80, 0.1)';
         ctx.beginPath();
         ctx.arc(px, py, this.range * canvas.width, 0, Math.PI*2);
@@ -178,7 +165,7 @@ class Turret {
     }
 }
 
-// --- 5. INPUT (BUILDING) ---
+// --- 5. INPUT ---
 canvas.addEventListener('click', (e) => {
     if (gameState.gameOver) return;
 
@@ -190,26 +177,33 @@ canvas.addEventListener('click', (e) => {
         towers.push(new Turret(cx, cy));
         gameState.gold -= TURRET_COST;
     } else {
-        // Flash HUD red if no money
         document.getElementById('displayGold').style.color = 'red';
         setTimeout(() => document.getElementById('displayGold').style.color = '#4CAF50', 200);
     }
 });
 
 // --- 6. AD REVENUE LOGIC ---
+// Implements the .then() and .catch() structure from the docs
 function watchAdToRevive() {
-    AdController.show().then((result) => {
-        // SUCCESS
-        gameState.lives = 5;       
-        gameState.gold += 150;     
-        gameState.gameOver = false; 
-        
-        document.getElementById('gameOverModal').classList.add('hidden');
-        drawGame();
-        
-    }).catch((result) => {
-        alert("You must watch the full ad to revive!");
-    });
+    if (AdController) {
+        AdController.show().then((result) => {
+            // User watched ad till the end
+            // Reward the user
+            gameState.lives = 5;       
+            gameState.gold += 150;     
+            gameState.gameOver = false; 
+            
+            document.getElementById('gameOverModal').classList.add('hidden');
+            drawGame();
+        }).catch((result) => {
+            // User closed ad early or error occurred
+            console.log(result); // optional debugging
+            // Do not reward
+            alert("You must watch the ad to revive!"); 
+        });
+    } else {
+        alert("Ads are not loading. Check your internet connection.");
+    }
 }
 
 // --- 7. MAIN LOOP ---
