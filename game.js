@@ -1,7 +1,11 @@
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
-// --- 1. SETUP & RESIZE ---
+// --- 1. ADSGRAM SETUP (YOUR ID IS FILLED HERE) ---
+// We use the ID you found: 21141
+const AdController = window.Adsgram.init({ blockId: "21141" });
+
+// --- 2. SETUP & RESIZE ---
 function resize() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
@@ -9,9 +13,9 @@ function resize() {
 window.addEventListener('resize', resize);
 resize();
 
-// --- 2. GAME VARIABLES ---
+// --- 3. GAME VARIABLES ---
 let gameState = {
-    gold: 120,    // Starting Gold
+    gold: 120,    
     lives: 10,
     wave: 1,
     gameOver: false
@@ -19,15 +23,15 @@ let gameState = {
 
 const enemies = [];
 const towers = [];
-const projectiles = []; // Visual lasers
+const projectiles = []; 
 
-// Game Constants
-const ENEMY_SPEED = 0.001;
+// Game Balance
+const ENEMY_SPEED = 0.0015;
 const TURRET_COST = 50;
-const TURRET_RANGE = 0.25; // 25% of screen width
-const REWARD_GOLD = 10;    // Gold earned per kill
+const TURRET_RANGE = 0.25; 
+const REWARD_GOLD = 10;   
 
-// The Path
+// The Map Path
 const path = [
     {x: 0, y: 0.5},
     {x: 0.4, y: 0.5},
@@ -37,14 +41,14 @@ const path = [
     {x: 1, y: 0.8}
 ];
 
-// --- 3. CLASSES ---
+// --- 4. CLASSES ---
 
 class Enemy {
     constructor() {
         this.pathIndex = 0;
         this.x = path[0].x;
         this.y = path[0].y;
-        this.health = 100 + (gameState.wave * 10); // Enemies get stronger every wave
+        this.health = 100 + (gameState.wave * 15); // Stronger every wave
         this.maxHealth = this.health;
         this.active = true;
     }
@@ -76,9 +80,9 @@ class Enemy {
         let px = this.x * canvas.width;
         let py = this.y * canvas.height;
 
-        // Enemy Body
+        // Enemy Body (Red Tank)
         ctx.fillStyle = '#ff3333';
-        ctx.fillRect(px - 10, py - 10, 20, 20);
+        ctx.fillRect(px - 12, py - 12, 24, 24);
 
         // Health Bar
         ctx.fillStyle = 'red';
@@ -90,7 +94,7 @@ class Enemy {
 
 class Turret {
     constructor(x, y) {
-        this.x = x; // Percentage (0.0 to 1.0)
+        this.x = x; 
         this.y = y;
         this.cooldown = 0;
         this.range = TURRET_RANGE;
@@ -99,37 +103,33 @@ class Turret {
     update() {
         if (this.cooldown > 0) this.cooldown--;
 
-        // Find closest enemy
         if (this.cooldown <= 0) {
             for (let e of enemies) {
                 if (!e.active) continue;
                 
-                // Calculate distance to enemy (Pythagoras theorem)
                 let dx = e.x - this.x;
                 let dy = e.y - this.y;
                 let dist = Math.sqrt(dx*dx + dy*dy);
 
-                // If in range, SHOOT!
                 if (dist < this.range) {
                     this.shoot(e);
-                    break; // Only shoot one at a time
+                    break; 
                 }
             }
         }
     }
 
     shoot(enemy) {
-        this.cooldown = 40; // Fire rate (frames)
-        enemy.health -= 35; // Damage
+        this.cooldown = 35; // Fire speed
+        enemy.health -= 40; // Damage
         
-        // Add visual laser beam
+        // Laser effect
         projectiles.push({
             sx: this.x, sy: this.y,
             ex: enemy.x, ey: enemy.y,
-            life: 10 // Visible for 10 frames
+            life: 8 
         });
 
-        // Check Kill
         if (enemy.health <= 0) {
             enemy.active = false;
             gameState.gold += REWARD_GOLD;
@@ -140,19 +140,19 @@ class Turret {
         let px = this.x * canvas.width;
         let py = this.y * canvas.height;
 
-        // Draw Turret Base
+        // Base
         ctx.fillStyle = '#444';
         ctx.beginPath();
         ctx.arc(px, py, 15, 0, Math.PI * 2);
         ctx.fill();
 
-        // Draw Turret Top (Green)
+        // Top (Green)
         ctx.fillStyle = '#4CAF50';
         ctx.beginPath();
         ctx.arc(px, py, 8, 0, Math.PI * 2);
         ctx.fill();
         
-        // Draw Range Circle (Faint)
+        // Range (Subtle)
         ctx.strokeStyle = 'rgba(76, 175, 80, 0.1)';
         ctx.beginPath();
         ctx.arc(px, py, this.range * canvas.width, 0, Math.PI*2);
@@ -160,42 +160,67 @@ class Turret {
     }
 }
 
-// --- 4. INPUT HANDLING (BUILDING) ---
+// --- 5. INPUT (BUILDING) ---
 canvas.addEventListener('click', (e) => {
     if (gameState.gameOver) return;
 
-    // Get click position in percentage
     let rect = canvas.getBoundingClientRect();
     let cx = (e.clientX - rect.left) / canvas.width;
     let cy = (e.clientY - rect.top) / canvas.height;
 
-    // Check cost
+    // Check if clicking near the path (Optional improvement: prevent blocking road)
+    // For now, simple check:
     if (gameState.gold >= TURRET_COST) {
         towers.push(new Turret(cx, cy));
         gameState.gold -= TURRET_COST;
     } else {
-        // Optional: Flash red or play sound
-        alert("Not enough Gold! Need " + TURRET_COST);
+        // Flash HUD red if no money
+        document.getElementById('displayGold').style.color = 'red';
+        setTimeout(() => document.getElementById('displayGold').style.color = '#4CAF50', 200);
     }
 });
 
-// --- 5. MAIN LOOP ---
+// --- 6. AD REVENUE LOGIC ---
+function watchAdToRevive() {
+    AdController.show().then((result) => {
+        // SUCCESS
+        gameState.lives = 5;       
+        gameState.gold += 150;     
+        gameState.gameOver = false; 
+        
+        // Hide Modal & Resume
+        document.getElementById('gameOverModal').classList.add('hidden');
+        drawGame();
+        
+    }).catch((result) => {
+        // ERROR OR SKIP
+        alert("You must watch the full ad to revive!");
+    });
+}
+
+// --- 7. MAIN LOOP ---
 function drawGame() {
+    if (gameState.gameOver) return;
+
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     // Draw Map
     ctx.beginPath();
     ctx.lineWidth = 40;
-    ctx.strokeStyle = '#1a1a1a';
+    ctx.strokeStyle = '#111';
     ctx.lineCap = 'round';
     ctx.moveTo(path[0].x * canvas.width, path[0].y * canvas.height);
     for (let p of path) ctx.lineTo(p.x * canvas.width, p.y * canvas.height);
     ctx.stroke();
 
-    // Draw Towers
+    // Draw Map Border
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = '#333';
+    ctx.stroke();
+
+    // Draw Objects
     towers.forEach(t => { t.update(); t.draw(); });
 
-    // Draw Enemies
     for (let i = enemies.length - 1; i >= 0; i--) {
         let e = enemies[i];
         e.update();
@@ -203,31 +228,32 @@ function drawGame() {
         if (!e.active) enemies.splice(i, 1);
     }
 
-    // Draw Lasers (Projectiles)
-    ctx.lineWidth = 2;
-    ctx.strokeStyle = 'yellow';
+    // Draw Lasers
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = '#ffff00'; // Yellow Lasers
     for (let i = projectiles.length - 1; i >= 0; i--) {
         let p = projectiles[i];
         ctx.beginPath();
         ctx.moveTo(p.sx * canvas.width, p.sy * canvas.height);
         ctx.lineTo(p.ex * canvas.width, p.ey * canvas.height);
         ctx.stroke();
-        
         p.life--;
         if (p.life <= 0) projectiles.splice(i, 1);
     }
 
     // Update UI
-    document.getElementById('displayGold').innerText = gameState.gold;
+    document.getElementById('displayGold').innerText = Math.floor(gameState.gold);
     document.getElementById('displayLives').innerText = gameState.lives;
+    document.getElementById('displayWave').innerText = "WAVE " + gameState.wave;
 
-    if (gameState.lives <= 0 && !gameState.gameOver) {
+    // Check Loss
+    if (gameState.lives <= 0) {
         gameState.gameOver = true;
-        // This is where we will add the "Watch Ad to Revive" logic later
-        alert("GAME OVER! Wave: " + gameState.wave); 
+        document.getElementById('finalWave').innerText = gameState.wave;
+        document.getElementById('gameOverModal').classList.remove('hidden');
+    } else {
+        requestAnimationFrame(drawGame);
     }
-
-    requestAnimationFrame(drawGame);
 }
 
 // Start
@@ -238,7 +264,7 @@ setInterval(() => {
     if (!gameState.gameOver) enemies.push(new Enemy());
 }, 1500);
 
-// Increase difficulty every 10 seconds
+// Difficulty
 setInterval(() => {
-    gameState.wave++;
-}, 10000);
+    if (!gameState.gameOver) gameState.wave++;
+}, 12000);
