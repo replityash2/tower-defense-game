@@ -2,9 +2,14 @@ const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
 // --- 1. CONFIGURATION ---
-// Temporarily disabled Ad Init to prevent crashes during debugging
-let AdController = null; 
-// try { AdController = window.Adsgram.init({ blockId: "21141" }); } catch (e) {}
+// RESTORED: Real Ad Logic
+let AdController;
+try {
+    // Block ID 21141 from your AdsGram Dashboard
+    AdController = window.Adsgram.init({ blockId: "21141" });
+} catch (e) {
+    console.error("AdBlock active or Network Error:", e);
+}
 
 const BASE_COSTS = { GUNNER: 50, SNIPER: 120, BLASTER: 200 };
 const TOWERS = {
@@ -16,7 +21,7 @@ const TOWERS = {
 const ENEMIES = {
     SOLDIER:  { speed: 0.0018, hp: 50,  color: '#ff3333', reward: 8,  type: 'normal' },
     SCOUT:    { speed: 0.0035, hp: 30,  color: '#FFFF00', reward: 12, type: 'dodge' }, 
-    TANK:     { speed: 0.0007, hp: 450, color: '#00FFFF', reward: 40, type: 'armor' }, // CYAN TANK
+    TANK:     { speed: 0.0007, hp: 450, color: '#00FFFF', reward: 40, type: 'armor' }, // Cyan for visibility
     HEALER:   { speed: 0.0015, hp: 100, color: '#00FF00', reward: 20, type: 'heal' },  
     SPLITTER: { speed: 0.0012, hp: 150, color: '#FF00FF', reward: 25, type: 'split' }  
 };
@@ -40,7 +45,7 @@ const projectiles = [];
 const particles = [];
 const acidPuddles = [];
 
-// Global Spawner to prevent double waves
+// Spawner Control
 let currentSpawner = null;
 
 const path = [
@@ -179,14 +184,13 @@ function startWave() {
     gameState.enemiesLeftInWave = waveConfig.length;
     let spawnIndex = 0;
     
-    // START SPAWNING IMMEDIATELY (100ms) to test visibility
     currentSpawner = setInterval(() => {
         if (gameState.gameOver || spawnIndex >= waveConfig.length) { clearInterval(currentSpawner); return; }
         
         let typeKey = waveConfig[spawnIndex];
         let type = ENEMIES[typeKey];
         
-        if (type) { // Safety Check
+        if (type) {
             enemies.push({
                 pathIndex: 0, x: path[0].x, y: path[0].y,
                 hp: type.hp + hpMult, maxHp: type.hp + hpMult,
@@ -244,27 +248,25 @@ canvas.addEventListener('click', (e) => {
     }
 });
 
-// --- 6. RENDER LOOP (THE FIX) ---
+// --- 6. RENDER LOOP ---
 function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
 window.addEventListener('resize', resize); resize();
 
 function draw() {
-    // Safety Catch to prevent stopping
     try {
         if (gameState.gameOver) return;
         ctx.clearRect(0,0,canvas.width,canvas.height);
 
-        // --- DEBUG COLORS (NEON) ---
-        // If you don't see this, the canvas is broken.
+        // --- MAP (High Visibility) ---
         ctx.lineCap = 'round'; 
         ctx.lineWidth = 44; 
-        ctx.strokeStyle = '#FFFFFF'; // WHITE BORDER
+        ctx.strokeStyle = '#FFFFFF'; // White Border
         ctx.beginPath(); ctx.moveTo(path[0].x*canvas.width, path[0].y*canvas.height);
         for(let p of path) ctx.lineTo(p.x*canvas.width, p.y*canvas.height);
         ctx.stroke();
         
         ctx.lineWidth = 36; 
-        ctx.strokeStyle = '#2196F3'; // BRIGHT BLUE ROAD
+        ctx.strokeStyle = '#2196F3'; // Blue Road
         ctx.stroke();
 
         for(let i=acidPuddles.length-1; i>=0; i--) {
@@ -301,7 +303,7 @@ function draw() {
             if(e.active) {
                 let px = e.x*canvas.width, py = e.y*canvas.height;
                 ctx.fillStyle = e.color; ctx.fillRect(px-10, py-10, 20, 20);
-                // Simple Text Icon
+                // Icons
                 ctx.fillStyle = 'black'; ctx.font = '10px Arial'; 
                 if(e.type === 'heal') ctx.fillText("✚", px-4, py+4); 
                 if(e.type === 'armor') ctx.fillText("🛡️", px-6, py+4);
@@ -366,10 +368,21 @@ function endGame() {
     document.getElementById('gameOverModal').classList.remove('hidden');
 }
 
-// SIMULATED REVIVE (Since Ads are Disabled)
+// RESTORED: Real Revive Logic
 window.watchAdToRevive = function() {
-    alert("Ads disabled for debugging. Reviving instantly!");
-    reviveSuccess();
+    if (AdController) {
+        AdController.show().then(() => {
+            reviveSuccess();
+        }).catch((e) => {
+            console.log("Ad skipped/failed:", e);
+            // FAIL-SAFE: Allow Developer to simulate success if ads are in Moderation
+            if(confirm("Ad Block not active yet (Moderation?). Simulate Success?")) {
+                reviveSuccess();
+            }
+        });
+    } else {
+        alert("Ad SDK not loaded (AdBlock?).");
+    }
 };
 
 function reviveSuccess() {
