@@ -5,28 +5,46 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Iron Sector Ops</title>
     <link rel="stylesheet" href="style.css">
+    
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://api.adsgram.ai/js/sdk.js"></script>
 </head>
 <body>
 
     <div id="ui-layer">
-        <div>💰 <span id="displayGold">0</span></div>
+        <div>💰 <span id="displayGold">120</span></div>
         <div id="displayWave">WAVE 1</div>
-        <div>❤️ <span id="displayLives">0</span></div>
+        <div>❤️ <span id="displayLives">10</span></div>
     </div>
 
     <canvas id="gameCanvas"></canvas>
 
     <div id="controls">
-        <button class="btn">Build Turret (50G)</button>
+        <div class="info-text">Tap map to build Turret (50G)</div>
+    </div>
+
+    <div id="gameOverModal" class="modal hidden">
+        <div class="modal-content">
+            <h1 style="color: #ff4444;">MISSION FAILED</h1>
+            <p>Sector Overrun at Wave <span id="finalWave">0</span></p>
+            
+            <button class="btn-green" onclick="watchAdToRevive()">
+                📺 Watch Ad to Revive (+100 Gold)
+            </button>
+            
+            <br><br>
+            <button class="btn-red" onclick="location.reload()">
+                💀 Give Up & Restart
+            </button>
+        </div>
     </div>
 
     <script src="game.js"></script>
     <script>
-        // Init Telegram App
+        // Initialize Telegram Web App
         const tg = window.Telegram.WebApp;
-        tg.expand(); // Full screen
-        tg.ready();
+        tg.expand(); // Force full screen
+        tg.ready();  // Tell Telegram we are ready
     </script>
 </body>
 </html>
