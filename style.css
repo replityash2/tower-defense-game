@@ -1,7 +1,7 @@
 body {
     margin: 0;
     overflow: hidden;
-    background-color: #1a1a1a; /* Dark tactical background */
+    background-color: #1a1a1a;
     font-family: 'Courier New', Courier, monospace;
     user-select: none;
     -webkit-user-select: none;
@@ -26,10 +26,10 @@ body {
 /* GAME CANVAS */
 canvas {
     display: block;
-    background-color: #222;
+    background-color: #222; /* Map Background Color */
 }
 
-/* BUILD MENU (Bottom Bar) */
+/* BUILD MENU */
 #build-menu {
     position: absolute;
     bottom: 10px;
@@ -59,34 +59,17 @@ canvas {
     transition: all 0.2s;
 }
 
-.tower-btn span { 
-    font-size: 11px; 
-    font-weight: bold; 
-    margin-bottom: 2px; 
-}
-
-/* Cost text changes color (controlled by game.js) */
-.cost-text { 
-    color: #ffd700; 
-    font-size: 10px; 
-}
-
-/* Highlight the selected tower */
-.tower-btn.selected {
-    border-color: #ffd700;
-    background: #444;
-    transform: scale(1.05);
-}
-
-/* Color coding for buttons */
+.tower-btn span { font-size: 11px; font-weight: bold; margin-bottom: 2px; }
+.cost-text { color: #ffd700; font-size: 10px; }
+.tower-btn.selected { border-color: #ffd700; background: #444; transform: scale(1.05); }
 .btn-gunner { color: #4CAF50; }
 .btn-sniper { color: #2196F3; }
 .btn-blaster { color: #FF9800; }
 
-/* UPGRADE POPUP (Floating) */
+/* UPGRADE MENU */
 #upgrade-menu {
     position: absolute;
-    display: none; /* Hidden by default */
+    display: none;
     background: rgba(0, 0, 0, 0.95);
     border: 2px solid #fff;
     padding: 10px;
@@ -96,36 +79,25 @@ canvas {
     width: 140px;
     box-shadow: 0 0 15px rgba(0,0,0,0.8);
 }
-
 #upgrade-menu button {
-    display: block; 
-    width: 100%; 
-    margin: 5px 0; 
-    padding: 10px;
-    cursor: pointer; 
-    font-weight: bold; 
-    border: none; 
-    border-radius: 4px;
-    font-size: 11px;
+    display: block; width: 100%; margin: 5px 0; padding: 10px;
+    cursor: pointer; font-weight: bold; border: none; border-radius: 4px; font-size: 11px;
 }
-
 .btn-upgrade { background: #2196F3; color: white; }
 .btn-sell { background: #ff4444; color: white; }
 .btn-cancel { background: #555; color: #ccc; }
 
-/* MODAL (Game Over) */
+/* GAME OVER MODAL */
 .modal {
     position: fixed; top: 0; left: 0; width: 100%; height: 100%;
     background: rgba(0, 0, 0, 0.9);
     display: flex; justify-content: center; align-items: center; z-index: 100;
 }
 .hidden { display: none; }
-
 .modal-content {
     background: #222; border: 2px solid #ff4444; padding: 20px;
     text-align: center; border-radius: 10px; width: 85%; max-width: 300px;
 }
-
 .btn-green {
     background: #4CAF50; color: white; border: none; padding: 12px;
     width: 100%; font-weight: bold; border-radius: 5px; margin-bottom: 10px;
