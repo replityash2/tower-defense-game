@@ -1,9 +1,27 @@
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
-// --- 1. ADSGRAM SETUP (YOUR ID IS FILLED HERE) ---
-// We use the ID you found: 21141
-const AdController = window.Adsgram.init({ blockId: "21141" });
+// --- 1. ADSGRAM SETUP (FAIL-SAFE MODE) ---
+// We try to connect to AdsGram. If it fails (AdBlocker/Network error), we use a dummy mode.
+let AdController;
+try {
+    if (window.Adsgram) {
+        AdController = window.Adsgram.init({ blockId: "21141" });
+    } else {
+        throw new Error("Adsgram SDK not loaded");
+    }
+} catch (e) {
+    console.log("Ads failed to load (AdBlock?):", e);
+    // Dummy Controller so game doesn't crash
+    AdController = {
+        show: () => {
+            return new Promise((resolve, reject) => {
+                alert("Ads are blocked on this device/network.\n\nSimulating reward...");
+                resolve();
+            });
+        }
+    };
+}
 
 // --- 2. SETUP & RESIZE ---
 function resize() {
@@ -48,7 +66,7 @@ class Enemy {
         this.pathIndex = 0;
         this.x = path[0].x;
         this.y = path[0].y;
-        this.health = 100 + (gameState.wave * 15); // Stronger every wave
+        this.health = 100 + (gameState.wave * 15); 
         this.maxHealth = this.health;
         this.active = true;
     }
@@ -168,8 +186,6 @@ canvas.addEventListener('click', (e) => {
     let cx = (e.clientX - rect.left) / canvas.width;
     let cy = (e.clientY - rect.top) / canvas.height;
 
-    // Check if clicking near the path (Optional improvement: prevent blocking road)
-    // For now, simple check:
     if (gameState.gold >= TURRET_COST) {
         towers.push(new Turret(cx, cy));
         gameState.gold -= TURRET_COST;
@@ -188,12 +204,10 @@ function watchAdToRevive() {
         gameState.gold += 150;     
         gameState.gameOver = false; 
         
-        // Hide Modal & Resume
         document.getElementById('gameOverModal').classList.add('hidden');
         drawGame();
         
     }).catch((result) => {
-        // ERROR OR SKIP
         alert("You must watch the full ad to revive!");
     });
 }
@@ -213,7 +227,7 @@ function drawGame() {
     for (let p of path) ctx.lineTo(p.x * canvas.width, p.y * canvas.height);
     ctx.stroke();
 
-    // Draw Map Border
+    // Draw Border
     ctx.lineWidth = 2;
     ctx.strokeStyle = '#333';
     ctx.stroke();
@@ -230,7 +244,7 @@ function drawGame() {
 
     // Draw Lasers
     ctx.lineWidth = 3;
-    ctx.strokeStyle = '#ffff00'; // Yellow Lasers
+    ctx.strokeStyle = '#ffff00'; 
     for (let i = projectiles.length - 1; i >= 0; i--) {
         let p = projectiles[i];
         ctx.beginPath();
